@@ -1,44 +1,26 @@
-import { WebSocketServer } from 'ws';
-import http from 'http';
-import https from 'https';
+const express = require("express");
+const httpProxy = require("http-proxy");
+const app = express();
 
-const targetHost = "farahani21.xqrnk58cmohx.workers.dev";
-const targetPath = "/ghorbunetberam.ir/";
+const proxy = httpProxy.createProxyServer({ changeOrigin: true });
 
-const server = http.createServer();
-const wss = new WebSocketServer({ server });
-
-wss.on('connection', function connection(wsClient, req) {
-  const reqOptions = {
-    hostname: targetHost,
-    port: 443,
-    path: targetPath,
-    method: 'GET',
-    headers: {
-      'Connection': 'Upgrade',
-      'Upgrade': 'websocket',
-      'Host': targetHost
-    }
-  };
-
-  const proxyReq = https.request(reqOptions);
-
-  proxyReq.on('upgrade', (res, socket, head) => {
-    wsClient.on('message', msg => socket.write(msg));
-    socket.on('data', data => wsClient.send(data));
-
-    socket.on('close', () => wsClient.close());
-    wsClient.on('close', () => socket.destroy());
-  });
-
-  proxyReq.on('error', err => {
+app.use("/ghavi8.ir/", (req, res) => {
+  proxy.web(req, res, {
+    target: "https://farahani21.xqrnk58cmohx.workers.dev", // Cloudflare Worker or real VLESS server
+    ws: true
+  }, (err) => {
     console.error("Proxy error:", err);
-    wsClient.close();
+    res.status(500).send("Proxy failed.");
   });
-
-  proxyReq.end();
 });
 
-server.listen(process.env.PORT || 3000, () => {
-  console.log('🟢 WebSocket proxy running...');
+// WebSocket support
+const server = app.listen(process.env.PORT || 3000, () => {
+  console.log("Proxy server running on port", server.address().port);
+});
+server.on("upgrade", (req, socket, head) => {
+  proxy.ws(req, socket, head, {
+    target: "https://farahani21.xqrnk58cmohx.workers.dev",
+    ws: true
+  });
 });
